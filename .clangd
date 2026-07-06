@@ -1,4 +1,7 @@
-# clangd (clang) parses a GCC/Xtensa compile database — drop the flags clang rejects.
+# clangd (clang) parses a GCC/Xtensa compile database:
+#  - strip GCC/Xtensa-only flags clang rejects
+#  - force a 32-bit ELF target clang knows (stock LLVM has no Xtensa backend;
+#    ILP32 matches, so IntelliSense/xref/hover stay accurate)
 CompileFlags:
-  Remove: [-mlongcalls, -fno-reorder-functions, -fno-defer-pop, -fstrict-volatile-bitfields, -fno-printf-return-value, --param=*]
-  Add: [-Wno-unknown-warning-option]
+  Remove: [-mlongcalls, -fno-reorder-functions, -fno-defer-pop, -fstrict-volatile-bitfields, -fno-printf-return-value, --param=*, -m*]
+  Add: [--target=riscv32-unknown-elf, -Wno-unknown-warning-option]
