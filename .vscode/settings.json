@@ -1,6 +1,12 @@
 {
-	"clangd.arguments": [
-		"--compile-commands-dir=${workspaceFolder}/build",
-		"--query-driver=/opt/zephyr-sdk/**/*-gcc,/opt/zephyr-sdk/**/*-g++"
-	]
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build",
+        "--query-driver=/opt/zephyr-sdk/**",
+        "--header-insertion=never",
+        "--background-index"
+    ],
+    "editor.formatOnSave": true,
+    "[c]": { "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd" },
+    "[cpp]": { "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd" },
+    "C_Cpp.intelliSenseEngine": "disabled"
 }

@@ -1,0 +1,4 @@
+# clangd (clang) parses a GCC/Xtensa compile database — drop the flags clang rejects.
+CompileFlags:
+  Remove: [-mlongcalls, -fno-reorder-functions, -fno-defer-pop, -fstrict-volatile-bitfields, -fno-printf-return-value, --param=*]
+  Add: [-Wno-unknown-warning-option]
