@@ -1,5 +1,5 @@
-#include <zephyr/kernel.h>
 #include "exercises.h"
+#include <zephyr/kernel.h>
 
 int main(void)
 {
