@@ -6,22 +6,6 @@
 
 #define KV_ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 
-/* Locking: runtime API (k_mutex_init/lock/unlock), no static DEFINE macros.
- * The mutex lives inside the store, so every instance locks independently.
- *
- * The const story: kv_get/kv_count take a const store — logically read-only —
- * but taking a mutex mutates the mutex. We cast const away for the lock only:
- * legal here because no kv_store_t object is ever actually defined const,
- * and it keeps the read-only promise visible in the public API. */
-static inline void kv_lock(const kv_store_t *store)
-{
-    k_mutex_lock(&((kv_store_t *)store)->lock, K_FOREVER);
-}
-static inline void kv_unlock(const kv_store_t *store)
-{
-    k_mutex_unlock(&((kv_store_t *)store)->lock);
-}
-
 int kv_init(kv_store_t *store)
 {
     if (store == NULL)
@@ -58,7 +42,7 @@ int kv_set(kv_store_t *store, const char *key, int32_t value)
     /* single-exit from here down: everything below holds the lock, and the
      * ONLY way out is through the unlock at the bottom. This is the
      * discipline that lets early-exit logic coexist with a mutex. */
-    kv_lock(store);
+    k_mutex_lock(&store->lock, K_FOREVER);
 
     // First, lets see if we have already seen this guy -> overwrite
     for (size_t e = 0; e < KV_ARRAY_LEN(store->entries); e++)
@@ -86,11 +70,11 @@ int kv_set(kv_store_t *store, const char *key, int32_t value)
     }
 
 out:
-    kv_unlock(store);
+    k_mutex_unlock(&store->lock);
     return ret;
 }
 
-int kv_get(const kv_store_t *store, const char *key, int32_t *value)
+int kv_get(kv_store_t *store, const char *key, int32_t *value)
 {
     int ret = -ENOENT;
 
@@ -99,7 +83,7 @@ int kv_get(const kv_store_t *store, const char *key, int32_t *value)
         return -EINVAL;
     }
 
-    kv_lock(store);
+    k_mutex_lock(&store->lock, K_FOREVER);
     for (size_t e = 0; e < KV_ARRAY_LEN(store->entries); e++)
     {
         if (store->entries[e].set && strcmp(store->entries[e].name, key) == 0)
@@ -109,7 +93,7 @@ int kv_get(const kv_store_t *store, const char *key, int32_t *value)
             break;
         }
     }
-    kv_unlock(store);
+    k_mutex_unlock(&store->lock);
 
     return ret;
 }
@@ -123,7 +107,7 @@ int kv_delete(kv_store_t *store, const char *key)
         return -EINVAL;
     }
 
-    kv_lock(store);
+    k_mutex_lock(&store->lock, K_FOREVER);
     for (size_t e = 0; e < KV_ARRAY_LEN(store->entries); e++)
     {
         if (store->entries[e].set && strcmp(store->entries[e].name, key) == 0)
@@ -136,12 +120,12 @@ int kv_delete(kv_store_t *store, const char *key)
             break;
         }
     }
-    kv_unlock(store);
+    k_mutex_unlock(&store->lock);
 
     return ret;
 }
 
-size_t kv_count(const kv_store_t *store)
+size_t kv_count(kv_store_t *store)
 {
     size_t n = 0;
 
@@ -152,7 +136,7 @@ size_t kv_count(const kv_store_t *store)
         return 0;
     }
 
-    kv_lock(store);
+    k_mutex_lock(&store->lock, K_FOREVER);
     for (size_t e = 0; e < KV_ARRAY_LEN(store->entries); e++)
     {
         if (store->entries[e].set)
@@ -160,7 +144,7 @@ size_t kv_count(const kv_store_t *store)
             n++;
         }
     }
-    kv_unlock(store);
+    k_mutex_unlock(&store->lock);
 
     return n;
 }

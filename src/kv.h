@@ -34,10 +34,10 @@ typedef struct kv_store
 
 int kv_init(kv_store_t *store);
 int kv_set(kv_store_t *store, const char *key, int32_t value);
-int kv_get(const kv_store_t *store, const char *key, int32_t *value);
+int kv_get(kv_store_t *store, const char *key, int32_t *value);
 
 // Stage 2
 int kv_delete(kv_store_t *store, const char *key);
-size_t kv_count(const kv_store_t *store);
+size_t kv_count(kv_store_t *store);
 
 #endif
