@@ -1,12 +1,9 @@
 {
-    "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}/build",
-        "--query-driver=/opt/zephyr-sdk/**",
-        "--header-insertion=never",
-        "--background-index"
-    ],
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.inlayHints.parameterNames.enabled": false,
     "editor.formatOnSave": true,
-    "[c]": { "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd" },
-    "[cpp]": { "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd" },
-    "C_Cpp.intelliSenseEngine": "disabled"
+    "[c]": { "editor.defaultFormatter": "ms-vscode.cpptools" },
+    "[cpp]": { "editor.defaultFormatter": "ms-vscode.cpptools" },
+    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, IndentWidth: 8, UseTab: Always, BreakBeforeBraces: Linux, ColumnLimit: 100, AlignConsecutiveMacros: AcrossComments }"
 }
