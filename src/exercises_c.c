@@ -1,13 +1,48 @@
 /* Track 1: C fundamentals. Implement each TODO, then ./ctl.sh run. */
 
+// Private includes
 #include "exercises.h"
+
+// Standard includes
 #include <errno.h>
 #include <string.h>
+
+// Zephyr includes
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
+
+/* Use the default Zephyr log level here; in a multi-file module, one file
+ * should use LOG_MODULE_REGISTER() and the others LOG_MODULE_DECLARE().
+ */
+LOG_MODULE_DECLARE(exercise_c, CONFIG_LOG_DEFAULT_LEVEL);
 
 /* C1 — hint: two indices walking toward each other. */
 void ex_reverse_string(char *s)
 {
-	/* TODO: implement */
+	size_t len = strlen(s);
+
+	// Easy why we can't swap a string of 2
+	if (strlen(s) < 2) {
+		LOG_WRN("Cant' switch a string of only 2 characters big dawg\n");
+		return;
+	}
+
+	// Get both pointers
+	char *start = s;
+	char *end = s + len - 1;
+
+	while (start < end) {
+		// Swap the pointers, first save one value
+		char tmp = *start;
+		*start = *end;
+		*end = tmp;
+
+		// Advance the pointers
+		start++;
+		end--;
+	}
+
 	(void)s;
 }
 
@@ -54,8 +89,7 @@ int ex_ring_pop(struct ex_ring *r, uint8_t *out)
 
 /* C5 — hint: walk with a struct ex_node **cursor and you won't need a
  * special case for inserting at the head. */
-struct ex_node *ex_list_insert_sorted(struct ex_node *head,
-				      struct ex_node *node)
+struct ex_node *ex_list_insert_sorted(struct ex_node *head, struct ex_node *node)
 {
 	/* TODO: implement */
 	(void)node;
@@ -64,8 +98,7 @@ struct ex_node *ex_list_insert_sorted(struct ex_node *head,
 
 /* C6 — hint: build the mask as ((1u << width) - 1) << shift.
  * Clear those bits in reg, OR in the (truncated, shifted) value. */
-uint32_t ex_reg_set_field(uint32_t reg, unsigned int shift,
-			  unsigned int width, uint32_t value)
+uint32_t ex_reg_set_field(uint32_t reg, unsigned int shift, unsigned int width, uint32_t value)
 {
 	/* TODO: implement */
 	(void)shift;

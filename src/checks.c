@@ -2,6 +2,7 @@
  * read it freely though, the expected values ARE the spec. */
 
 #include "exercises.h"
+#include "kv.h"
 #include <errno.h>
 #include <string.h>
 
@@ -189,6 +190,82 @@ static void check_z5_work(void)
 	CHECK("Z5 flag set after the delay", ex_work_flag == 1);
 }
 
+
+/* -------------------- Z6: kv store under concurrency ------------------ */
+
+static kv_store_t kvz_store;
+K_THREAD_STACK_ARRAY_DEFINE(kvz_stacks, 2, 2048);
+static struct k_thread kvz_threads[2];
+static volatile int kvz_errors;
+
+static void kvz_entry(void *p1, void *p2, void *p3)
+{
+	int id = (int)(intptr_t)p1;
+	char key[16];
+	int32_t v;
+
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	for (int round = 0; round < 400; round++) {
+		for (int k = 0; k < 5; k++) {
+			snprintf(key, sizeof(key), "t%dk%d", id, k);
+			if (kv_set(&kvz_store, key, round * 10 + k) != 0) {
+				kvz_errors++;
+			}
+		}
+		for (int k = 0; k < 5; k++) {
+			snprintf(key, sizeof(key), "t%dk%d", id, k);
+			if (kv_get(&kvz_store, key, &v) != 0) {
+				kvz_errors++;
+			}
+		}
+		if ((round % 10) == 9) {
+			snprintf(key, sizeof(key), "t%dk0", id);
+			if (kv_delete(&kvz_store, key) != 0) {
+				kvz_errors++;
+			}
+			if (kv_set(&kvz_store, key, round) != 0) {
+				kvz_errors++;
+			}
+		}
+	}
+}
+
+static void check_kvz(void)
+{
+	int32_t v;
+	int present = 0;
+	char key[16];
+
+	kv_init(&kvz_store);
+	kvz_errors = 0;
+
+	k_tid_t t0 = k_thread_create(&kvz_threads[0], kvz_stacks[0],
+				     K_THREAD_STACK_SIZEOF(kvz_stacks[0]),
+				     kvz_entry, (void *)0, NULL, NULL,
+				     5, 0, K_NO_WAIT);
+	k_tid_t t1 = k_thread_create(&kvz_threads[1], kvz_stacks[1],
+				     K_THREAD_STACK_SIZEOF(kvz_stacks[1]),
+				     kvz_entry, (void *)1, NULL, NULL,
+				     5, 0, K_NO_WAIT);
+	k_thread_join(t0, K_SECONDS(30));
+	k_thread_join(t1, K_SECONDS(30));
+
+	for (int id = 0; id < 2; id++) {
+		for (int k = 0; k < 5; k++) {
+			snprintf(key, sizeof(key), "t%dk%d", id, k);
+			if (kv_get(&kvz_store, key, &v) == 0) {
+				present++;
+			}
+		}
+	}
+
+	CHECK("Z6 no op failed under concurrency", kvz_errors == 0);
+	CHECK("Z6 all 10 keys survived the churn", present == 10);
+	CHECK("Z6 count() agrees", kv_count(&kvz_store) == 10);
+}
+
 /* ------------------------------ runner ------------------------------- */
 
 int checks_run_all(void)
@@ -210,6 +287,9 @@ int checks_run_all(void)
 	check_z3_msgq();
 	check_z4_threads();
 	check_z5_work();
+
+	printk("--- Track 3: kv module under Zephyr ---\n");
+	check_kvz();
 
 	printk("\n===== %d passing / %d failing =====\n", pass_n, fail_n);
 	if (fail_n == 0) {
