@@ -194,7 +194,9 @@ static void check_z5_work(void)
 /* -------------------- Z6: kv store under concurrency ------------------ */
 
 static kv_store_t kvz_store;
-K_THREAD_STACK_ARRAY_DEFINE(kvz_stacks, 2, 2048);
+/* thread control blocks are plain statics; the STACKS are allocated at
+ * runtime with k_thread_stack_alloc() (CONFIG_DYNAMIC_THREAD) — the fully
+ * programmatic alternative to K_THREAD_STACK_DEFINE. */
 static struct k_thread kvz_threads[2];
 static volatile int kvz_errors;
 
@@ -241,16 +243,23 @@ static void check_kvz(void)
 	kv_init(&kvz_store);
 	kvz_errors = 0;
 
-	k_tid_t t0 = k_thread_create(&kvz_threads[0], kvz_stacks[0],
-				     K_THREAD_STACK_SIZEOF(kvz_stacks[0]),
+	k_thread_stack_t *stk0 = k_thread_stack_alloc(2048, 0);
+	k_thread_stack_t *stk1 = k_thread_stack_alloc(2048, 0);
+	if (stk0 == NULL || stk1 == NULL) {
+		CHECK("Z6 runtime stack allocation", false);
+		return;
+	}
+
+	k_tid_t t0 = k_thread_create(&kvz_threads[0], stk0, 2048,
 				     kvz_entry, (void *)0, NULL, NULL,
 				     5, 0, K_NO_WAIT);
-	k_tid_t t1 = k_thread_create(&kvz_threads[1], kvz_stacks[1],
-				     K_THREAD_STACK_SIZEOF(kvz_stacks[1]),
+	k_tid_t t1 = k_thread_create(&kvz_threads[1], stk1, 2048,
 				     kvz_entry, (void *)1, NULL, NULL,
 				     5, 0, K_NO_WAIT);
 	k_thread_join(t0, K_SECONDS(30));
 	k_thread_join(t1, K_SECONDS(30));
+	k_thread_stack_free(stk0);
+	k_thread_stack_free(stk1);
 
 	for (int id = 0; id < 2; id++) {
 		for (int k = 0; k < 5; k++) {

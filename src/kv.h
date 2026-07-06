@@ -6,14 +6,16 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// A couple of assumptions:
-// - not using a macro at the library level here, instead a const to later be used internally
-//.  in the .c file to allocate a static block of memory, same same but diff, user can then
-//.  crrate the config 1 level up from wehre this gets called
-// - for the error types, im going to use the standard errrno.h ferrors, although i could also
-//   make an enum with the error types, and instead pass storage pointers to the get function,
-//.  either way, i think either implementation is fine, this is more zephyr like
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#endif
+
+// Assumptions:
+// - fixed compile-time capacity, no dynamic allocation; caller owns the store
+// - errors: standard negative errno values (0 = success) — zephyr-like
 // - KV_CFG_MAX_KEY_LEN includes the NUL terminator (max 31 visible chars)
+// - under Zephyr the store carries its own mutex (initialized in kv_init):
+//   all operations are thread-safe. On host builds the lock compiles away.
 
 #define KV_CFG_MAX_KEY_LEN 32
 #define KV_CFG_MAX_ITEMS 16
@@ -25,9 +27,12 @@ typedef struct
     int32_t value;
 } kv_t;
 
-typedef struct
+typedef struct kv_store
 {
     bool initialized;
+#ifdef __ZEPHYR__
+    struct k_mutex lock;   // per-store lock — instances lock independently
+#endif
     kv_t entries[KV_CFG_MAX_ITEMS];
 } kv_store_t;
 
