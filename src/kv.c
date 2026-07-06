@@ -13,7 +13,6 @@
  * but taking a mutex mutates the mutex. We cast const away for the lock only:
  * legal here because no kv_store_t object is ever actually defined const,
  * and it keeps the read-only promise visible in the public API. */
-#ifdef __ZEPHYR__
 static inline void kv_lock(const kv_store_t *store)
 {
     k_mutex_lock(&((kv_store_t *)store)->lock, K_FOREVER);
@@ -22,11 +21,6 @@ static inline void kv_unlock(const kv_store_t *store)
 {
     k_mutex_unlock(&((kv_store_t *)store)->lock);
 }
-#else
-/* host build (kata/tests): single-threaded, locks compile to nothing */
-static inline void kv_lock(const kv_store_t *store) { (void)store; }
-static inline void kv_unlock(const kv_store_t *store) { (void)store; }
-#endif
 
 int kv_init(kv_store_t *store)
 {
@@ -40,9 +34,7 @@ int kv_init(kv_store_t *store)
     // Re-init is simply defined as: wipe everything.
     memset(store, 0, sizeof(*store));
 
-#ifdef __ZEPHYR__
     k_mutex_init(&store->lock);   // programmatic init — no K_MUTEX_DEFINE
-#endif
     store->initialized = true;
 
     return 0;
