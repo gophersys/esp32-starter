@@ -1,12 +1,19 @@
 #include <zephyr/kernel.h>
+#include "exercises.h"
 
-int main(void) {
-  int count = 0;
+int main(void)
+{
+	printk("\n========================================\n");
+	printk(" C / Zephyr review — make the checks pass\n");
+	printk(" edit src/exercises_c.c + src/exercises_zephyr.c\n");
+	printk(" then: ./ctl.sh run\n");
+	printk("========================================\n\n");
 
-  printk("esp32-starter booted on %s\n", CONFIG_BOARD_TARGET);
-  while (1) {
-    printk("tick %d\n", count++);
-    k_sleep(K_SECONDS(1));
-  }
-  return 0;
+	int failing = checks_run_all();
+
+	while (1) {
+		k_sleep(K_SECONDS(60));
+		printk("(%d failing — edit, save, ./ctl.sh run)\n", failing);
+	}
+	return 0;
 }
