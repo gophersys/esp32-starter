@@ -26,7 +26,8 @@ int kv_init(kv_store_t *store)
 
 int kv_set(kv_store_t *store, const char *key, int32_t value)
 {
-    int ret = -ENOSPC;   // assume full; any hit below overrides
+    int ret = -ENOSPC;                       // assume full; hits below override
+    size_t free_slot = KV_CFG_MAX_ITEMS;     // sentinel: no free slot seen yet
 
     if (store == NULL || !store->initialized)
     {
@@ -39,37 +40,37 @@ int kv_set(kv_store_t *store, const char *key, int32_t value)
         return -EINVAL;
     }
 
-    /* single-exit from here down: everything below holds the lock, and the
-     * ONLY way out is through the unlock at the bottom. This is the
-     * discipline that lets early-exit logic coexist with a mutex. */
     k_mutex_lock(&store->lock, K_FOREVER);
 
-    // First, lets see if we have already seen this guy -> overwrite
+    // ONE scan: overwrite if the key exists, remembering the first free
+    // slot as we pass it — single loop, single unlock below
     for (size_t e = 0; e < KV_ARRAY_LEN(store->entries); e++)
     {
-        if (store->entries[e].set && strcmp(store->entries[e].name, key) == 0)
+        if (store->entries[e].set)
         {
-            store->entries[e].value = value;
-            ret = 0;
-            goto out;
+            if (strcmp(store->entries[e].name, key) == 0)
+            {
+                store->entries[e].value = value;
+                ret = 0;
+                break;
+            }
+        }
+        else if (free_slot == KV_CFG_MAX_ITEMS)
+        {
+            free_slot = e;
         }
     }
 
-    // If we do not have this guy, find the first avail spot, and set
-    for (size_t e = 0; e < KV_ARRAY_LEN(store->entries); e++)
+    // not found -> insert into the remembered slot, if we saw one
+    if (ret != 0 && free_slot != KV_CFG_MAX_ITEMS)
     {
-        if (!store->entries[e].set)
-        {
-            // safe: length validated above; strcpy copies the NUL with it
-            strcpy(store->entries[e].name, key);
-            store->entries[e].value = value;
-            store->entries[e].set = true;
-            ret = 0;
-            goto out;
-        }
+        // safe: length validated above; strcpy copies the NUL with it
+        strcpy(store->entries[free_slot].name, key);
+        store->entries[free_slot].value = value;
+        store->entries[free_slot].set = true;
+        ret = 0;
     }
 
-out:
     k_mutex_unlock(&store->lock);
     return ret;
 }
