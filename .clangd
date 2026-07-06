@@ -5,3 +5,7 @@
 CompileFlags:
   Remove: [-mlongcalls, -fno-reorder-functions, -fno-defer-pop, -fstrict-volatile-bitfields, -fno-printf-return-value, --param=*, -m*]
   Add: [--target=riscv32-unknown-elf, -Wno-unknown-warning-option]
+InlayHints:
+  ParameterNames: No
+  DeducedTypes: No
+  Designators: No
